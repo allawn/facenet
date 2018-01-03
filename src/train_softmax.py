@@ -60,7 +60,7 @@ def main(args):
         
     # Store some git revision info in a text file in the log directory
     src_path,_ = os.path.split(os.path.realpath(__file__))
-    facenet.store_revision_info(src_path, log_dir, ' '.join(sys.argv))
+    facenet.store_revision_info(src_path, log_dir    , ' '.join(sys.argv))
 
     np.random.seed(seed=args.seed)
     random.seed(args.seed)
@@ -95,6 +95,7 @@ def main(args):
         # Create a queue that produces indices into the image_list and label_list 
         labels = ops.convert_to_tensor(label_list, dtype=tf.int32)
         range_size = array_ops.shape(labels)[0]
+        print("xxx",range_size)
         index_queue = tf.train.range_input_producer(range_size, num_epochs=None,
                              shuffle=True, seed=None, capacity=32)
         
@@ -187,7 +188,17 @@ def main(args):
             learning_rate, args.moving_average_decay, tf.global_variables(), args.log_histograms)
         
         # Create a saver
-        saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=3)
+        variables_to_restore = []
+        variables_to_restore_all = []
+        numa = 1
+        for var in tf.trainable_variables():
+            print(numa, var.op.name)
+            numa = numa + 1
+            if not var.op.name.startswith('Logits/') and not var.op.name.startswith('global_step'):
+                variables_to_restore.append(var)
+            if not var.op.name.startswith('global_step'):
+                variables_to_restore_all.append(var)
+        saver = tf.train.Saver(variables_to_restore, max_to_keep=3)
 
         # Build the summary operation based on the TF collection of Summaries.
         summary_op = tf.summary.merge_all()
